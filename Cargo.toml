@@ -1,0 +1,20 @@
+[package]
+name = "ontio-wasm-build"
+version = "0.1.0"
+authors = ["laizy <aochyi@126.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "ontio-wasm-build"
+
+[dependencies]
+clap = "2.33.0"
+parity-wasm = "0.39"
+failure = "0.1.5"
+pwasm-utils = "0.9.0"
+# the wasmi version in crates.io has not updated parity-wasm to 0.39 yet
+wasmi = {git = 'https://github.com/paritytech/wasmi', branch="master"}
+wabt = "0.9.1"
+
