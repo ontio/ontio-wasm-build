@@ -50,3 +50,6 @@ fn main() -> Result<(), Error> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod test;
