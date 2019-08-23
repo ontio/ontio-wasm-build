@@ -285,7 +285,7 @@ fn check_limits(module: &mut Module) -> Result<(), Error> {
         let limit = entries[0].limits();
         let (initial, maximum) = (limit.initial(), limit.maximum());
         if initial > MAX_TABLE_SIZE {
-            return Err(err_msg("initial memory size too large, plase use `RUSTFLAGS=\"-C link-arg=-zstack-size=32768\" cargo build`"));
+            return Err(err_msg("initial table size too large"));
         }
         if maximum.unwrap_or(MAX_TABLE_SIZE) >= MAX_TABLE_SIZE {
             entries[0] = TableType::new(initial, Some(MAX_TABLE_SIZE));

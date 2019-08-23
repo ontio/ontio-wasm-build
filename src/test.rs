@@ -2,16 +2,14 @@ use crate::build;
 
 use failure::Error;
 
-fn check_optimize_contract(origin: &str, expected: &str) -> Result<(), Error> {
+fn check_optimize_contract(origin: &str, expected: &str) {
     let origin = wabt::wat2wasm(origin).expect("origin wast must be valid");
     let expected = wabt::wat2wasm(expected).expect("origin wast must be valid");
     let origin = parity_wasm::deserialize_buffer(&origin).expect("origin wast must be valid");
-    let module = build::build(origin, true)?;
+    let module = build::build(origin, true).expect("build should not fail");
 
-    let buf = parity_wasm::serialize(module)?;
+    let buf = parity_wasm::serialize(module).expect("serialize should not fail");
     assert_eq!(buf, expected);
-
-    Ok(())
 }
 
 // invalid contract
@@ -31,6 +29,138 @@ fn check_valid_contract(origin: &str) {
         Err(e) => panic!(e),
         Ok(_) => return,
     }
+}
+
+#[test]
+fn test_table_limit() {
+    check_valid_contract(
+        r#"
+    (module
+    (type (;0;) (func))
+    (func (;0;))
+    (table (;0;) 1 10 funcref)
+    (export "invoke" (func 0))
+    )
+    "#,
+    );
+
+    // exceed initial size
+    dbg!(check_invalid_contract(
+        r#"
+    (module
+    (type (;0;) (func))
+    (func (;0;))
+    (table (;0;) 1025 1025 funcref)
+    (export "invoke" (func 0))
+    )
+    "#,
+    ));
+
+    // exceed max size
+    check_optimize_contract(
+        r#"
+    (module
+    (type (;0;) (func))
+    (func (;0;))
+    (table (;0;) 1 1025 funcref)
+    (export "invoke" (func 0))
+    )
+    "#,
+        r#"
+    (module
+    (type (;0;) (func))
+    (func (;0;))
+    (table (;0;) 1 1024 funcref)
+    (export "invoke" (func 0))
+    )
+    "#,
+    );
+
+    // no max size
+    check_optimize_contract(
+        r#"
+    (module
+    (type (;0;) (func))
+    (func (;0;))
+    (table (;0;) 1  funcref)
+    (export "invoke" (func 0))
+    )
+    "#,
+        r#"
+    (module
+    (type (;0;) (func))
+    (func (;0;))
+    (table (;0;) 1 1024 funcref)
+    (export "invoke" (func 0))
+    )
+    "#,
+    );
+}
+
+#[test]
+fn test_mem_limit() {
+    check_valid_contract(
+        r#"
+    (module
+    (type (;0;) (func))
+    (func (;0;))
+    (memory (;0;) 1 10)
+    (export "invoke" (func 0))
+    )
+    "#,
+    );
+
+    // exceed initial size
+    dbg!(check_invalid_contract(
+        r#"
+    (module
+    (type (;0;) (func))
+    (func (;0;))
+    (memory (;0;) 10 10)
+    (export "invoke" (func 0))
+    )
+    "#,
+    ));
+
+    // exceed max size
+    check_optimize_contract(
+        r#"
+    (module
+    (type (;0;) (func))
+    (func (;0;))
+    (memory (;0;) 1 81)
+    (export "invoke" (func 0))
+    )
+    "#,
+        r#"
+    (module
+    (type (;0;) (func))
+    (func (;0;))
+    (memory (;0;) 1 80)
+    (export "invoke" (func 0))
+    )
+    "#,
+    );
+
+    // no max size
+    check_optimize_contract(
+        r#"
+    (module
+    (type (;0;) (func))
+    (func (;0;))
+    (memory (;0;) 1 )
+    (export "invoke" (func 0))
+    )
+    "#,
+        r#"
+    (module
+    (type (;0;) (func))
+    (func (;0;))
+    (memory (;0;) 1 80)
+    (export "invoke" (func 0))
+    )
+    "#,
+    );
 }
 
 #[test]
