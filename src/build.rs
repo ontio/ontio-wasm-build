@@ -6,6 +6,8 @@ use parity_wasm::elements::{
 use failure::{err_msg, Error};
 use pwasm_utils::optimize;
 
+use crate::constants;
+
 pub fn build(mut module: Module, nocustom: bool) -> Result<Module, Error> {
     if module.start_section().is_some() {
         return Err(err_msg("start section is not allowed"));
@@ -253,10 +255,6 @@ fn import_funcion_indexes(module: &Module) -> Vec<u32> {
         .unwrap_or_default()
 }
 
-const PAGE_SIZE: u32 = 64 * 1024;
-const MAX_MEM_PAGE: u32 = 80;
-const MAX_TABLE_SIZE: u32 = 1024;
-
 // check memory and table limits, if upper bound is not specified, it will be replaced with the default
 // max value, so the arg is a mutable ref.
 fn check_limits(module: &mut Module) -> Result<(), Error> {
@@ -268,12 +266,12 @@ fn check_limits(module: &mut Module) -> Result<(), Error> {
         }
         let limit = entries[0].limits();
         let (initial, maximum) = (limit.initial(), limit.maximum());
-        let stack_size = initial * PAGE_SIZE - init_mem;
-        if stack_size > 1 * PAGE_SIZE || initial > MAX_MEM_PAGE {
+        let stack_size = initial * constants::PAGE_SIZE - init_mem;
+        if stack_size > 1 * constants::PAGE_SIZE || initial > constants::MAX_MEM_PAGE {
             return Err(err_msg("initial memory size too large, plase use `RUSTFLAGS=\"-C link-arg=-zstack-size=32768\" cargo build`"));
         }
-        if maximum.unwrap_or(MAX_MEM_PAGE) >= MAX_MEM_PAGE {
-            entries[0] = MemoryType::new(initial, Some(MAX_MEM_PAGE));
+        if maximum.unwrap_or(constants::MAX_MEM_PAGE) >= constants::MAX_MEM_PAGE {
+            entries[0] = MemoryType::new(initial, Some(constants::MAX_MEM_PAGE));
         }
     }
 
@@ -284,11 +282,11 @@ fn check_limits(module: &mut Module) -> Result<(), Error> {
         }
         let limit = entries[0].limits();
         let (initial, maximum) = (limit.initial(), limit.maximum());
-        if initial > MAX_TABLE_SIZE {
+        if initial > constants::MAX_TABLE_SIZE {
             return Err(err_msg("initial table size too large"));
         }
-        if maximum.unwrap_or(MAX_TABLE_SIZE) >= MAX_TABLE_SIZE {
-            entries[0] = TableType::new(initial, Some(MAX_TABLE_SIZE));
+        if maximum.unwrap_or(constants::MAX_TABLE_SIZE) >= constants::MAX_TABLE_SIZE {
+            entries[0] = TableType::new(initial, Some(constants::MAX_TABLE_SIZE));
         }
     }
 

@@ -3,7 +3,10 @@ use failure::{Error, ResultExt};
 use std::io::Write;
 use std::path::Path;
 
+use failure::err_msg;
+
 mod build;
+mod constants;
 
 fn main() -> Result<(), Error> {
     let version = format!(
@@ -38,15 +41,19 @@ fn main() -> Result<(), Error> {
         parity_wasm::deserialize_file(input).context("could not deserialize input wasm file")?;
 
     let module = build::build(module, !keep_custom)?;
-    match Path::new(output).extension() {
-        Some(ext) if ext == "wat" || ext == "wast" => {
-            let buf = parity_wasm::serialize(module)?;
-            let wat = wabt::wasm2wat(buf)?;
-            let mut io = ::std::fs::File::create(output)?;
-            io.write_all(wat.as_bytes())?;
-        }
-        _ => parity_wasm::serialize_to_file(output, module)?,
+    let buf = parity_wasm::serialize(module)?;
+    if buf.len() > constants::MAX_WASM_SIZE {
+        return Err(err_msg("finial wasm file size exceed 512KB"));
     }
+    let buf = match Path::new(output).extension() {
+        Some(ext) if ext == "wat" || ext == "wast" => {
+            let wat = wabt::wasm2wat(buf)?;
+            wat.into_bytes()
+        }
+        _ => buf,
+    };
+    let mut io = ::std::fs::File::create(output)?;
+    io.write_all(&buf)?;
 
     Ok(())
 }
