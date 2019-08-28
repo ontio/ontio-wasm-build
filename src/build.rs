@@ -1,5 +1,5 @@
 use parity_wasm::elements::{
-    External, FuncBody, FunctionType, InitExpr, Instruction, Internal, MemoryType, Module,
+    External, FuncBody, FunctionType, InitExpr, Instruction, Internal, MemoryType, Module, Section,
     TableType, Type, ValueType,
 };
 
@@ -57,10 +57,13 @@ pub fn build(mut module: Module, nocustom: bool) -> Result<Module, Error> {
     clean_zeros_in_data_section(&mut module);
 
     if nocustom {
-        let names: Vec<String> =
-            module.custom_sections().map(|elem| elem.name().to_string()).collect();
-        for name in &names {
-            module.clear_custom_section(name);
+        let sections = module.sections_mut();
+
+        for i in (0..sections.len()).rev() {
+            match sections[i] {
+                Section::Name(_) | Section::Custom(_) => sections.remove(i),
+                _ => continue,
+            };
         }
 
         assert_eq!(module.custom_sections().count(), 0);
