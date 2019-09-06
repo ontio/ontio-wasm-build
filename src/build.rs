@@ -271,7 +271,7 @@ fn check_limits(module: &mut Module) -> Result<(), Error> {
         let limit = entries[0].limits();
         let (initial, maximum) = (limit.initial(), limit.maximum());
         let stack_size = initial * constants::PAGE_SIZE - init_mem;
-        if stack_size > 1 * constants::PAGE_SIZE || initial > constants::MAX_MEM_PAGE {
+        if stack_size > 2 * constants::PAGE_SIZE || initial > constants::MAX_MEM_PAGE {
             return Err(err_msg("initial memory size too large, plase use `RUSTFLAGS=\"-C link-arg=-zstack-size=32768\" cargo build`"));
         }
         if maximum.unwrap_or(constants::MAX_MEM_PAGE) >= constants::MAX_MEM_PAGE {
