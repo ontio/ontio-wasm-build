@@ -72,7 +72,7 @@ pub fn build(mut module: Module, nocustom: bool) -> Result<Module, Error> {
     Ok(module)
 }
 
-const SIGNATURES: [(&str, &[ValueType], Option<ValueType>); 23] = [
+const SIGNATURES: [(&str, &[ValueType], Option<ValueType>); 24] = [
     ("ontio_timestamp", &[], Some(ValueType::I64)),
     ("ontio_block_height", &[], Some(ValueType::I32)),
     ("ontio_input_length", &[], Some(ValueType::I32)),
@@ -86,6 +86,7 @@ const SIGNATURES: [(&str, &[ValueType], Option<ValueType>); 23] = [
     ("ontio_current_blockhash", &[ValueType::I32], Some(ValueType::I32)),
     ("ontio_current_txhash", &[ValueType::I32], Some(ValueType::I32)),
     ("ontio_return", &[ValueType::I32; 2], None),
+    ("ontio_panic", &[ValueType::I32; 2], None),
     ("ontio_notify", &[ValueType::I32; 2], None),
     ("ontio_call_contract", &[ValueType::I32; 3], Some(ValueType::I32)),
     ("ontio_contract_create", &[ValueType::I32; 14], Some(ValueType::I32)),
