@@ -17,4 +17,5 @@ pwasm-utils = "0.9.0"
 # the wasmi version in crates.io has not updated parity-wasm to 0.39 yet
 wasmi = {git = 'https://github.com/paritytech/wasmi', rev="9d998c72895c7d132556ea93eb0c68b525c75895"}
 wabt = "0.9.1"
+hex = "0.4.0"
 
