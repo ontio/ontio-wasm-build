@@ -16,6 +16,34 @@ pub fn build(mut module: Module, nocustom: bool) -> Result<Module, Error> {
     optimize(&mut module, vec!["invoke"])
         .map_err(|e| err_msg(format!("failed to optimize: {:?}", e)))?;
 
+    wasm_check(&mut module)?;
+
+    clean_zeros_in_data_section(&mut module);
+
+    if nocustom {
+        let sections = module.sections_mut();
+
+        for i in (0..sections.len()).rev() {
+            match sections[i] {
+                Section::Name(_) | Section::Custom(_) => sections.remove(i),
+                _ => continue,
+            };
+        }
+
+        assert_eq!(module.custom_sections().count(), 0);
+    }
+
+    Ok(module)
+}
+pub fn wasm_validate(wasm: &[u8]) -> Result<(), Error> {
+    let mut module = parity_wasm::deserialize_buffer::<Module>(wasm)?;
+    wasm_check(&mut module)
+}
+
+pub fn wasm_check(module: &mut Module) -> Result<(), Error> {
+    if module.start_section().is_some() {
+        return Err(err_msg("start section is not allowed"));
+    }
     // check invoke signature
     match module.export_section() {
         None => return Err(err_msg("invoke function is not exported")),
@@ -52,24 +80,8 @@ pub fn build(mut module: Module, nocustom: bool) -> Result<Module, Error> {
 
     check_import_section(&module)?;
 
-    check_limits(&mut module)?;
-
-    clean_zeros_in_data_section(&mut module);
-
-    if nocustom {
-        let sections = module.sections_mut();
-
-        for i in (0..sections.len()).rev() {
-            match sections[i] {
-                Section::Name(_) | Section::Custom(_) => sections.remove(i),
-                _ => continue,
-            };
-        }
-
-        assert_eq!(module.custom_sections().count(), 0);
-    }
-
-    Ok(module)
+    check_limits(module)?;
+    Ok(())
 }
 
 const SIGNATURES: [(&str, &[ValueType], Option<ValueType>); 24] = [

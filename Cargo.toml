@@ -1,6 +1,6 @@
 [package]
 name = "ontio-wasm-build"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["laizy <aochyi@126.com>"]
 edition = "2018"
 
@@ -8,6 +8,9 @@ edition = "2018"
 
 [[bin]]
 name = "ontio-wasm-build"
+
+[lib]
+crate-type = ["lib"]
 
 [dependencies]
 clap = "2.33.0"
