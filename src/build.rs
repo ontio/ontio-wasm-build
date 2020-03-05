@@ -3,18 +3,17 @@ use parity_wasm::elements::{
     TableType, Type, ValueType,
 };
 
-use failure::{err_msg, Error};
+use anyhow::{anyhow, bail, Result};
 use pwasm_utils::optimize;
 
 use crate::constants;
 
-pub fn build(mut module: Module, nocustom: bool) -> Result<Module, Error> {
+pub(crate) fn build(mut module: Module, nocustom: bool) -> Result<Module> {
     if module.start_section().is_some() {
-        return Err(err_msg("start section is not allowed"));
+        bail!("start section is not allowed");
     }
 
-    optimize(&mut module, vec!["invoke"])
-        .map_err(|e| err_msg(format!("failed to optimize: {:?}", e)))?;
+    optimize(&mut module, vec!["invoke"]).map_err(|e| anyhow!("failed to optimize: {:?}", e))?;
 
     wasm_check(&mut module)?;
 
@@ -35,21 +34,22 @@ pub fn build(mut module: Module, nocustom: bool) -> Result<Module, Error> {
 
     Ok(module)
 }
-pub fn wasm_validate(wasm: &[u8]) -> Result<(), Error> {
+
+pub fn wasm_validate(wasm: &[u8]) -> Result<()> {
     let mut module = parity_wasm::deserialize_buffer::<Module>(wasm)?;
     wasm_check(&mut module)
 }
 
-pub fn wasm_check(module: &mut Module) -> Result<(), Error> {
+pub fn wasm_check(module: &mut Module) -> Result<()> {
     if module.start_section().is_some() {
-        return Err(err_msg("start section is not allowed"));
+        bail!("start section is not allowed");
     }
     // check invoke signature
     match module.export_section() {
-        None => return Err(err_msg("invoke function is not exported")),
+        None => bail!("invoke function is not exported"),
         Some(export) => {
             if export.entries().len() != 1 {
-                return Err(err_msg("invoke function is not exported"));
+                bail!("invoke function is not exported");
             }
             let invoke = &export.entries()[0];
             assert_eq!(invoke.field(), "invoke");
@@ -66,12 +66,12 @@ pub fn wasm_check(module: &mut Module) -> Result<(), Error> {
                     match func_type {
                         Type::Function(func_type) => {
                             if func_type.params().len() != 0 || func_type.return_type() != None {
-                                return Err(err_msg("signature mismatch for func: invoke"));
+                                bail!("signature mismatch for func: invoke");
                             }
                         }
                     }
                 }
-                _ => return Err(err_msg("invoke is not a export function")),
+                _ => bail!("invoke is not a export function"),
             }
         }
     }
@@ -111,14 +111,11 @@ const SIGNATURES: [(&str, &[ValueType], Option<ValueType>); 24] = [
     ("ontio_sha256", &[ValueType::I32; 3], None),
 ];
 
-fn check_import_section(module: &Module) -> Result<(), Error> {
+fn check_import_section(module: &Module) -> Result<()> {
     if let Some(import_section) = module.import_section() {
         for import_entry in import_section.entries() {
             if import_entry.module() != "env" {
-                return Err(err_msg(format!(
-                    "import module should be env, got: {}",
-                    import_entry.module()
-                )));
+                return Err(anyhow!("import module should be env, got: {}", import_entry.module()));
             }
 
             match import_entry.external() {
@@ -130,27 +127,27 @@ fn check_import_section(module: &Module) -> Result<(), Error> {
                         }
                     }
                 }
-                _ => return Err(err_msg("only function can be imported from ontology runtime")),
+                _ => bail!("only function can be imported from ontology runtime"),
             };
         }
     }
     return Ok(());
 }
 
-fn check_signature(func: &str, func_type: &FunctionType) -> Result<(), Error> {
+fn check_signature(func: &str, func_type: &FunctionType) -> Result<()> {
     match SIGNATURES.iter().find(|e| e.0 == func) {
-        None => return Err(err_msg(format!("can not find signature for func: {}", func))),
+        None => return Err(anyhow!("can not find signature for func: {}", func)),
         Some(sig) => {
             if sig.2 != func_type.return_type()
                 || sig.1.len() != func_type.params().len()
                 || sig.1.iter().zip(func_type.params()).any(|(a, b)| a != b)
             {
-                return Err(err_msg(format!(
+                return Err(anyhow!(
                     "signature mismatch for func: {}, expect:{:?}, got: {:?}",
                     func,
                     sig.1,
                     func_type.params()
-                )));
+                ));
             }
         }
     }
@@ -180,14 +177,14 @@ fn is_float_init_expr(init_expr: &InitExpr) -> bool {
     false
 }
 
-fn deny_floating_point(module: &Module) -> Result<(), Error> {
+fn deny_floating_point(module: &Module) -> Result<()> {
     if let Some(code) = module.code_section() {
         let bodies: &[FuncBody] = code.bodies();
         for body in bodies {
             let locals = body.locals();
             for local in locals {
                 if is_float_type(&local.value_type()) {
-                    return Err(err_msg("function local variable contains floating type"));
+                    bail!("function local variable contains floating type");
                 }
             }
         }
@@ -197,13 +194,13 @@ fn deny_floating_point(module: &Module) -> Result<(), Error> {
         let entries = global_section.entries();
         for entry in entries {
             if is_float_type(&entry.global_type().content_type()) {
-                return Err(err_msg(format!(
+                return Err(anyhow!(
                     "global type content type is invalid: {}",
                     &entry.global_type().content_type()
-                )));
+                ));
             }
             if is_float_init_expr(entry.init_expr()) {
-                return Err(err_msg("global init expr contains floating type"));
+                bail!("global init expr contains floating type");
             }
         }
     }
@@ -212,7 +209,7 @@ fn deny_floating_point(module: &Module) -> Result<(), Error> {
         for data_segment in data_section.entries() {
             if let Some(init_expr) = data_segment.offset() {
                 if is_float_init_expr(init_expr) {
-                    return Err(err_msg("init expr in data section contains floating type"));
+                    bail!("init expr in data section contains floating type");
                 }
             }
         }
@@ -221,7 +218,7 @@ fn deny_floating_point(module: &Module) -> Result<(), Error> {
         for entry in elements_section.entries() {
             if let Some(init_expr) = entry.offset() {
                 if is_float_init_expr(init_expr) {
-                    return Err(err_msg("init expr in element section contains floating type"));
+                    bail!("init expr in element section contains floating type");
                 }
             }
         }
@@ -275,18 +272,18 @@ fn import_funcion_indexes(module: &Module) -> Vec<u32> {
 
 // check memory and table limits, if upper bound is not specified, it will be replaced with the default
 // max value, so the arg is a mutable ref.
-fn check_limits(module: &mut Module) -> Result<(), Error> {
+fn check_limits(module: &mut Module) -> Result<()> {
     let init_mem = initial_memory_size_in_data_section(module) as u32;
     if let Some(mem) = module.memory_section_mut() {
         let entries = mem.entries_mut();
         if entries.len() > 1 {
-            return Err(err_msg("no more than one memory definition"));
+            bail!("no more than one memory definition");
         }
         let limit = entries[0].limits();
         let (initial, maximum) = (limit.initial(), limit.maximum());
         let stack_size = initial * constants::PAGE_SIZE - init_mem;
         if stack_size > 2 * constants::PAGE_SIZE || initial > constants::MAX_MEM_PAGE {
-            return Err(err_msg("initial memory size too large, plase use `RUSTFLAGS=\"-C link-arg=-zstack-size=32768\" cargo build`"));
+            bail!("initial memory size too large, plase use `RUSTFLAGS=\"-C link-arg=-zstack-size=32768\" cargo build`");
         }
         if maximum.unwrap_or(constants::MAX_MEM_PAGE) >= constants::MAX_MEM_PAGE {
             entries[0] = MemoryType::new(initial, Some(constants::MAX_MEM_PAGE));
@@ -296,12 +293,12 @@ fn check_limits(module: &mut Module) -> Result<(), Error> {
     if let Some(table) = module.table_section_mut() {
         let entries = table.entries_mut();
         if entries.len() > 1 {
-            return Err(err_msg("no more than one table definition"));
+            bail!("no more than one table definition");
         }
         let limit = entries[0].limits();
         let (initial, maximum) = (limit.initial(), limit.maximum());
         if initial > constants::MAX_TABLE_SIZE {
-            return Err(err_msg("initial table size too large"));
+            bail!("initial table size too large");
         }
         if maximum.unwrap_or(constants::MAX_TABLE_SIZE) >= constants::MAX_TABLE_SIZE {
             entries[0] = TableType::new(initial, Some(constants::MAX_TABLE_SIZE));

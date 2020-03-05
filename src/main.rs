@@ -1,14 +1,13 @@
 use clap::{App, Arg};
-use failure::{Error, ResultExt};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use failure::bail;
+use anyhow::{bail, Context, Result};
 
 mod build;
 mod constants;
 
-fn main() -> Result<(), Error> {
+fn main() -> Result<()> {
     let version = format!(
         "{}.{}.{}{}",
         env!("CARGO_PKG_VERSION_MAJOR"),

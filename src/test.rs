@@ -1,6 +1,6 @@
 use crate::build;
 
-use failure::Error;
+use anyhow::Error;
 
 fn check_optimize_contract(origin: &str, expected: &str) {
     let origin = wabt::wat2wasm(origin).expect("origin wast must be valid");
