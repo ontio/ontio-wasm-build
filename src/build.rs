@@ -36,6 +36,9 @@ pub(crate) fn build(mut module: Module, nocustom: bool) -> Result<Module> {
 }
 
 pub fn wasm_validate(wasm: &[u8]) -> Result<()> {
+    if wasm.len() > constants::MAX_WASM_SIZE {
+        bail!("finial wasm file size exceed 512KB");
+    }
     let mut module = parity_wasm::deserialize_buffer::<Module>(wasm)?;
     wasm_check(&mut module)
 }
