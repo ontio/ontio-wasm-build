@@ -3,8 +3,8 @@ use crate::build;
 use anyhow::Error;
 
 fn check_optimize_contract(origin: &str, expected: &str) {
-    let origin = wabt::wat2wasm(origin).expect("origin wast must be valid");
-    let expected = wabt::wat2wasm(expected).expect("origin wast must be valid");
+    let origin = wat::parse_str(origin).expect("origin wast must be valid");
+    let expected = wat::parse_str(expected).expect("origin wast must be valid");
     let origin = parity_wasm::deserialize_buffer(&origin).expect("origin wast must be valid");
     let module = build::build(origin, true).expect("build should not fail");
 
@@ -14,7 +14,7 @@ fn check_optimize_contract(origin: &str, expected: &str) {
 
 // invalid contract
 fn check_invalid_contract(origin: &str) -> Error {
-    let origin = wabt::wat2wasm(origin).expect("origin wast must be valid");
+    let origin = wat::parse_str(origin).expect("origin wast must be valid");
     let origin = parity_wasm::deserialize_buffer(&origin).expect("origin wast must be valid");
     match build::build(origin, true) {
         Ok(_) => panic!("invalid contract should fail"),
@@ -23,7 +23,7 @@ fn check_invalid_contract(origin: &str) -> Error {
 }
 
 fn check_valid_contract(origin: &str) {
-    let origin = wabt::wat2wasm(origin).expect("origin wast must be valid");
+    let origin = wat::parse_str(origin).expect("origin wast must be valid");
     let origin = parity_wasm::deserialize_buffer(&origin).expect("origin wast must be valid");
     match build::build(origin, true) {
         Err(e) => panic!(e),

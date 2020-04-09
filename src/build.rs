@@ -322,7 +322,7 @@ fn initial_memory_size_in_data_section(module: &Module) -> usize {
 fn dump_module(title: &str, module: &Module) {
     println!("{}", title);
     let buf = parity_wasm::serialize(module.clone()).unwrap();
-    let wat = wabt::wasm2wat(buf).unwrap();
+    let wat = wasmprinter::print_bytes(&buf).unwrap();
 
     println!("{}", wat);
 }

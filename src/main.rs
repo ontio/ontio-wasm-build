@@ -69,7 +69,7 @@ fn main() -> Result<()> {
 
     let buf: Vec<u8> = match Path::new(&output).extension() {
         Some(ext) if ext == "wat" || ext == "wast" => {
-            let wat = wabt::wasm2wat(buf)?;
+            let wat = wasmprinter::print_bytes(&buf)?;
             wat.into_bytes()
         }
         Some(ext) if ext == "str" => hex::encode(&buf).as_bytes().to_vec(),
