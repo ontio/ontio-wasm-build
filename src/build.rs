@@ -87,7 +87,7 @@ pub fn wasm_check(module: &mut Module) -> Result<()> {
     Ok(())
 }
 
-const SIGNATURES: [(&str, &[ValueType], Option<ValueType>); 24] = [
+const SIGNATURES: [(&str, &[ValueType], Option<ValueType>); 25] = [
     ("ontio_timestamp", &[], Some(ValueType::I64)),
     ("ontio_block_height", &[], Some(ValueType::I32)),
     ("ontio_input_length", &[], Some(ValueType::I32)),
@@ -95,6 +95,7 @@ const SIGNATURES: [(&str, &[ValueType], Option<ValueType>); 24] = [
     ("ontio_get_input", &[ValueType::I32], None),
     ("ontio_get_call_output", &[ValueType::I32], None),
     ("ontio_self_address", &[ValueType::I32], None),
+    ("ontio_gas_info", &[ValueType::I32], None),
     ("ontio_caller_address", &[ValueType::I32], None),
     ("ontio_entry_address", &[ValueType::I32], None),
     ("ontio_check_witness", &[ValueType::I32], Some(ValueType::I32)),
